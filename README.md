@@ -3,7 +3,9 @@
 Build contracts:
 
 ``` sh
-capsule build
+git submodule update --init --recursive
+cd pw-lock && make all-via-docker
+cd .. && capsule build
 ```
 
 Run tests:
