@@ -1,3 +1,4 @@
 [submodule "pw-lock"]
 	path = pw-lock
 	url = https://github.com/zeroqn/pw-lock
+	branch = feat-support-dynamic-loading
