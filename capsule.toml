@@ -13,3 +13,7 @@ deployment = "deployment.toml"
 [[contracts]]
 name = "ckb-dynamic-loading-pw-lock"
 template_type = "Rust"
+
+[[contracts]]
+name = "pw-lock-dynamic-verify"
+template_type = "Rust"
