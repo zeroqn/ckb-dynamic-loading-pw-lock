@@ -1,5 +1,5 @@
 [workspace]
-members = ["tests", "contracts/ckb-dynamic-loading-pw-lock", "ckb-lib-pw-lock", "contracts/pw-lock-dynamic-verify"]
+members = ["tests", "ckb-lib-pw-lock", "contracts/pw-lock-dynamic-verify"]
 
 [profile.release]
 overflow-checks = true

@@ -1,15 +1,12 @@
 use bech32::{self, ToBase32};
+use ckb_testtool::context::Context;
 use ckb_tool::ckb_crypto::secp::{Privkey, Pubkey};
-use ckb_tool::ckb_traits::{CellDataProvider, HeaderProvider};
-use ckb_tool::ckb_types::core::{cell::CellMeta, EpochExt, HeaderView, TransactionView};
-use ckb_tool::ckb_types::packed::{
-    self, Byte32, CellInputVec, CellOutput, CellOutputVec, OutPoint, Script, WitnessArgs,
-};
+use ckb_tool::ckb_types::core::TransactionView;
+use ckb_tool::ckb_types::packed::{self, CellInputVec, CellOutputVec, Script, WitnessArgs};
 use ckb_tool::ckb_types::{bytes::Bytes, prelude::*, H256};
 use secp256k1::key;
 
 use lazy_static::lazy_static;
-use std::collections::HashMap;
 
 use sha3::{Digest, Keccak256};
 
@@ -17,47 +14,14 @@ pub const MAX_CYCLES: u64 = std::u64::MAX;
 pub const SIGNATURE_SIZE: usize = 65;
 
 lazy_static! {
-    pub static ref SECP256K1_DATA_BIN: Bytes =
-        Bytes::from(&include_bytes!("../../pw-lock/specs/cells/secp256k1_data")[..]);
-    pub static ref KECCAK256_ALL_ACPL_BIN: Bytes = Bytes::from(
-        &include_bytes!("../../pw-lock/specs/cells/secp256k1_keccak256_sighash_all_acpl")[..]
-    );
+    pub static ref SECP256K1_DATA: Vec<u8> =
+        include_bytes!("../../pw-lock/specs/cells/secp256k1_data").to_vec();
+    pub static ref KECCAK256_ALL_ACPL_BIN: Vec<u8> =
+        include_bytes!("../../pw-lock/specs/cells/secp256k1_keccak256_sighash_all_acpl").to_vec();
+    pub static ref KECCAK256_ALL_BIN: Vec<u8> =
+        include_bytes!("../../pw-lock/specs/cells/secp256k1_keccak256_sighash_all").to_vec();
 }
 
-#[derive(Default)]
-pub struct DummyDataLoader {
-    pub cells: HashMap<OutPoint, (CellOutput, Bytes)>,
-    pub headers: HashMap<Byte32, HeaderView>,
-    pub epoches: HashMap<Byte32, EpochExt>,
-}
-
-impl DummyDataLoader {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl CellDataProvider for DummyDataLoader {
-    fn load_cell_data(&self, cell: &CellMeta) -> Option<(Bytes, Byte32)> {
-        cell.mem_cell_data.clone().or_else(|| {
-            self.cells
-                .get(&cell.out_point)
-                .map(|(_, data)| (data.clone(), CellOutput::calc_data_hash(&data)))
-        })
-    }
-
-    fn get_cell_data(&self, out_point: &OutPoint) -> Option<(Bytes, Byte32)> {
-        unreachable!()
-    }
-}
-
-impl HeaderProvider for DummyDataLoader {
-    fn get_header(&self, hash: &Byte32) -> Option<HeaderView> {
-        self.headers.get(hash).cloned()
-    }
-}
-
-// pub fn eth160(message: &[u8]) -> Bytes {
 pub fn eth160(pubkey1: Pubkey) -> Bytes {
     let prefix_key: [u8; 65] = {
         let mut temp = [4u8; 65];
@@ -66,10 +30,6 @@ pub fn eth160(pubkey1: Pubkey) -> Bytes {
     };
     let pubkey = key::PublicKey::from_slice(&prefix_key).unwrap();
     let message = Vec::from(&pubkey.serialize_uncompressed()[1..]);
-    // let message = Vec::from(&pubkey.serialize()[..]);
-
-    // println!("{}", faster_hex::hex_string(&message).unwrap());
-    // println!("{}", faster_hex::hex_string(&message1).unwrap());
 
     let mut hasher = Keccak256::default();
     hasher.input(&message);
@@ -77,16 +37,16 @@ pub fn eth160(pubkey1: Pubkey) -> Bytes {
 }
 
 pub fn sign_tx_keccak256(
-    dummy: &mut DummyDataLoader,
+    context: &mut Context,
     tx: TransactionView,
     key: &Privkey,
 ) -> TransactionView {
     let witnesses_len = tx.witnesses().len();
-    sign_tx_by_input_group_keccak256(dummy, tx, key, 0, witnesses_len)
+    sign_tx_by_input_group_keccak256(context, tx, key, 0, witnesses_len)
 }
 
 pub fn sign_tx_by_input_group_keccak256(
-    dummy: &mut DummyDataLoader,
+    context: &mut Context,
     tx: TransactionView,
     key: &Privkey,
     begin_index: usize,
@@ -143,7 +103,7 @@ pub fn sign_tx_by_input_group_keccak256(
                 message.copy_from_slice(&hasher.result()[0..32]);
 
                 // let message = H256::from(message);
-                let message = get_tx_typed_data_hash(dummy, message, tx.inputs(), tx.outputs());
+                let message = get_tx_typed_data_hash(context, message, tx.inputs(), tx.outputs());
                 let sig = key.sign_recoverable(&message).expect("sign");
                 witness
                     .as_builder()
@@ -166,7 +126,7 @@ pub fn sign_tx_by_input_group_keccak256(
 }
 
 pub fn get_tx_typed_data_hash(
-    dummy: &mut DummyDataLoader,
+    context: &mut Context,
     tx_hash: [u8; 32],
     inputs: CellInputVec,
     outputs: CellOutputVec,
@@ -196,7 +156,7 @@ pub fn get_tx_typed_data_hash(
     (0..len).for_each(|n| {
         let input_cell = inputs.get(n).unwrap();
         let previous_outpoint = input_cell.previous_output();
-        let val = dummy.cells.get(&previous_outpoint);
+        let val = context.get_cell(&previous_outpoint);
         let (cell, _) = val.unwrap();
 
         let capacity = cell.capacity();

@@ -4,9 +4,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+#[cfg(test)]
 mod common;
 #[cfg(test)]
-mod tests;
+mod dyn_verify;
 
 const TEST_ENV_VAR: &str = "CAPSULE_TEST_ENV";
 

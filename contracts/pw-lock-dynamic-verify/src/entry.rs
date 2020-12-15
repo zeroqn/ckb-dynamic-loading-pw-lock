@@ -28,7 +28,7 @@ pub fn main() -> Result<(), Error> {
         return Err(Error::WrongArgsLength);
     }
 
-    let mut context = unsafe { CKBDLContext::<[u8; 128 * 1024]>::new() };
+    let mut context = unsafe { CKBDLContext::<[u8; 255 * 1024]>::new() };
     let pw_lock = PWLockAcpl::load(&mut context);
 
     let mut buf = [0u8; 20];
