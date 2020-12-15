@@ -12,7 +12,7 @@ use crate::error::Error;
 pub fn main() -> Result<(), Error> {
     let mut context = unsafe { CKBDLContext::<[u8; 128 * 1024]>::new() };
     let pw_lock = PWLockAcpl::load(&mut context);
-    pw_lock.verify().map_err(|err| {
+    pw_lock.main().map_err(|err| {
         debug!("pw-lock acpl error: {}", err);
         Error::PWLockAcpl
     })
