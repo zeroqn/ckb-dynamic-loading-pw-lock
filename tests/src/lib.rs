@@ -7,7 +7,7 @@ use std::str::FromStr;
 #[cfg(test)]
 mod common;
 #[cfg(test)]
-mod dyn_verify;
+mod secp256k1_keccak256_sighash_all_dual;
 
 const TEST_ENV_VAR: &str = "CAPSULE_TEST_ENV";
 

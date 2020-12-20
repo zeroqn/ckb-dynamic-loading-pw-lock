@@ -1,18 +1,9 @@
-// Import from `core` instead of from `std` since we are in no-std mode
 use core::result::Result;
 
-// Import heap related library from `alloc`
-// https://doc.rust-lang.org/alloc/index.html
-
-// Import CKB syscalls and structures
-// https://nervosnetwork.github.io/ckb-std/riscv64imac-unknown-none-elf/doc/ckb_std/index.html
 use ckb_lib_pw_lock::PWLockAcpl;
-use ckb_std::debug;
+use ckb_std::ckb_types::{bytes::Bytes, prelude::*};
 use ckb_std::dynamic_loading::CKBDLContext;
-use ckb_std::{
-    ckb_types::{bytes::Bytes, prelude::*},
-    high_level::load_script,
-};
+use ckb_std::{debug, high_level::load_script};
 
 use crate::error::Error;
 
@@ -28,13 +19,13 @@ pub fn main() -> Result<(), Error> {
         return Err(Error::WrongArgsLength);
     }
 
-    let mut context = unsafe { CKBDLContext::<[u8; 255 * 1024]>::new() };
+    let mut context = unsafe { CKBDLContext::<[u8; 256 * 1024]>::new() };
     let pw_lock = PWLockAcpl::load(&mut context);
 
     let mut buf = [0u8; 20];
     buf.copy_from_slice(&args[0..20]);
 
-    pw_lock.verify(&mut buf).map_err(|err| {
+    pw_lock.verify(&buf).map_err(|err| {
         debug!("pw-lock acpl error: {}", err);
         Error::PWLockAcpl
     })

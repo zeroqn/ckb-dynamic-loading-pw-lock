@@ -1,4 +1,6 @@
-use super::common::{eth160, sign_tx_keccak256, KECCAK256_ALL_BIN, MAX_CYCLES, SECP256K1_DATA};
+use super::common::{
+    eth160, sign_tx_keccak256, MAX_CYCLES, SECP256K1_DATA, SECP256K1_KECCAK256_SIGHASH_DUAL,
+};
 use super::*;
 use ckb_testtool::context::Context;
 use ckb_tool::ckb_crypto::secp::Generator;
@@ -16,17 +18,17 @@ fn build_test_context(grouped_args: Vec<(Bytes, usize)>) -> (Context, Transactio
     let mut rng = thread_rng();
 
     // Deploy contract lockscript
-    let pw_lock_dyn_verify_bin = Loader::default().load_binary("pw-lock-dynamic-verify");
-    let pw_lock_dyn_verify_out_point = context.deploy_cell(pw_lock_dyn_verify_bin);
-    let pw_lock_dyn_verify_dep = CellDep::new_builder()
-        .out_point(pw_lock_dyn_verify_out_point.clone())
+    let pw_lock_bin = Loader::default().load_binary("pw-lock-dynamic-verify");
+    let pw_lock_out_point = context.deploy_cell(pw_lock_bin);
+    let pw_lock_dep = CellDep::new_builder()
+        .out_point(pw_lock_out_point.clone())
         .build();
 
-    // Deploy secp256k1_keccak256_sighash_all
-    let secp256k1_keccak256_out_point =
-        context.deploy_cell(Bytes::from(KECCAK256_ALL_BIN.as_slice()));
+    // Deploy secp256k1_keccak256_lock_lib
+    let secp256k1_keccak256_lib_out_point =
+        context.deploy_cell(Bytes::from(SECP256K1_KECCAK256_SIGHASH_DUAL.as_slice()));
     let secp256k1_keccak256_dep = CellDep::new_builder()
-        .out_point(secp256k1_keccak256_out_point)
+        .out_point(secp256k1_keccak256_lib_out_point)
         .build();
 
     // Deploy secp256k1_data
@@ -35,11 +37,7 @@ fn build_test_context(grouped_args: Vec<(Bytes, usize)>) -> (Context, Transactio
         .out_point(secp256k1_data_out_point)
         .build();
 
-    let deps = vec![
-        pw_lock_dyn_verify_dep,
-        secp256k1_data_dep,
-        secp256k1_keccak256_dep,
-    ];
+    let deps = vec![pw_lock_dep, secp256k1_data_dep, secp256k1_keccak256_dep];
 
     let output_lock_args = grouped_args[0].0.clone();
 
@@ -48,7 +46,7 @@ fn build_test_context(grouped_args: Vec<(Bytes, usize)>) -> (Context, Transactio
     for (args, inputs_size) in grouped_args {
         for _ in 0..inputs_size {
             let lock_script = context
-                .build_script(&pw_lock_dyn_verify_out_point, args.clone())
+                .build_script(&pw_lock_out_point, args.clone())
                 .expect("build lock script");
 
             let input_out_point = context.create_cell(
@@ -75,7 +73,7 @@ fn build_test_context(grouped_args: Vec<(Bytes, usize)>) -> (Context, Transactio
     }
 
     let output_lock_script = context
-        .build_script(&pw_lock_dyn_verify_out_point, output_lock_args)
+        .build_script(&pw_lock_out_point, output_lock_args)
         .expect("build output lock script");
 
     let output = CellOutput::new_builder()

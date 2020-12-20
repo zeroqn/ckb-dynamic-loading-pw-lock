@@ -16,10 +16,8 @@ pub const SIGNATURE_SIZE: usize = 65;
 lazy_static! {
     pub static ref SECP256K1_DATA: Vec<u8> =
         include_bytes!("../../pw-lock/specs/cells/secp256k1_data").to_vec();
-    pub static ref KECCAK256_ALL_ACPL_BIN: Vec<u8> =
-        include_bytes!("../../pw-lock/specs/cells/secp256k1_keccak256_sighash_all_acpl").to_vec();
-    pub static ref KECCAK256_ALL_BIN: Vec<u8> =
-        include_bytes!("../../pw-lock/specs/cells/secp256k1_keccak256_sighash_all").to_vec();
+    pub static ref SECP256K1_KECCAK256_SIGHASH_DUAL: Vec<u8> =
+        include_bytes!("../../pw-lock/specs/cells/secp256k1_keccak256_sighash_all_dual").to_vec();
 }
 
 pub fn eth160(pubkey1: Pubkey) -> Bytes {
@@ -46,7 +44,7 @@ pub fn sign_tx_keccak256(
 }
 
 pub fn sign_tx_by_input_group_keccak256(
-    context: &mut Context,
+    _context: &mut Context,
     tx: TransactionView,
     key: &Privkey,
     begin_index: usize,
@@ -102,9 +100,10 @@ pub fn sign_tx_by_input_group_keccak256(
                 hasher.input(&message);
                 message.copy_from_slice(&hasher.result()[0..32]);
 
-                // let message = H256::from(message);
-                let message = get_tx_typed_data_hash(context, message, tx.inputs(), tx.outputs());
+                let message = H256::from(message);
+                // let message = get_tx_typed_data_hash(context, message, tx.inputs(), tx.outputs());
                 let sig = key.sign_recoverable(&message).expect("sign");
+
                 witness
                     .as_builder()
                     .lock(Some(Bytes::from(sig.serialize())).pack())
@@ -125,6 +124,7 @@ pub fn sign_tx_by_input_group_keccak256(
         .build()
 }
 
+#[allow(dead_code)]
 pub fn get_tx_typed_data_hash(
     context: &mut Context,
     tx_hash: [u8; 32],
